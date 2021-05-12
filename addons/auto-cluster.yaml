@@ -16,10 +16,14 @@ onAfterScaleOut[sqldb]:
       initSlave: 
         id: ${@i.id}      
         ip: ${@i.address}
+  - fixhbaconf
 
 onBeforeScaleIn[sqldb]:
   - forEach(event.response.nodes):
       cmd[${nodes.sqldb.master.id}]: jcm removeReplicaHost ${@i.address}
+
+onAfterScaleIn[sqldb]:
+  - fixhbaconf
 
 onAfterClone:
   - script: delete MANIFEST.id; return {result:0, jps:MANIFEST};
@@ -48,19 +52,23 @@ actions:
                 #jcm updateReplicaHost ${nodes.sqldb.master.address} &>> /var/log/run.log
                 jcm updatePrimaryConnInfo &>> /var/log/run.log
                 sudo jem service restart
+      - fixhbaconf
     - else: 
       - setNodeDisplayName[${nodes.sqldb.master.id}]: Primary
-      - getPswd
+      - initMaster
       - forEach(nodes.sqldb):
           if (${@i.id} != ${nodes.sqldb.master.id}): 
             initSlave: 
               id: ${@i.id}
               ip: ${@i.address}
-    
+      - fixhbaconf
+
+  initMaster
+    - cmd[${nodes.sqldb.master.id}]: jcm initMaster &>> /var/log/run.log
+    - getPswd
+
   getPswd:
-    - cmd[${nodes.sqldb.master.id}]: |-
-        jcm initMaster &>> /var/log/run.log
-        jcm getPswd
+    - cmd[${nodes.sqldb.master.id}]: jcm getPswd
     - setGlobals: 
         pswd: ${response.out}    
     
@@ -72,7 +80,28 @@ actions:
     - cmd[${this.id}]: |-
         jcm setPswd ${globals.pswd}
         jcm initSlave ${nodes.sqldb.master.address} &>> /var/log/run.log
-  
+
+  fixhbaconf:
+    - script: |
+          var resp = jelastic.env.control.GetEnvInfo('${env.envName}', session);
+          var nodes_address = "";
+          if (resp.result != 0) return resp;
+          for (var l = 0, k = resp.nodes; l < k.length; l++) {
+            if (k[l].nodeGroup == 'sqldb') {
+              nodes_address += k[l].address + ",";
+            }
+          }
+          nodes_address = nodes_address.slice(0, -1);
+          return { result: 0, nodes_address: nodes_address }
+    - setGlobals:
+        nodes_address: ${response.nodes_address}
+    - forEach(nodes.sqldb):
+        if (${@i.id} != ${nodes.sqldb.master.id}):
+          cmd[${@i.id}]: |-
+            jcm updateHbaConf ${globals.nodes_address} ${@i.address}
+            sudo jem service reload
+
+
 startPage: ${nodes.sqldb.master.url}
 success: |
   **Admin Panel**: [${nodes.sqldb.master.url}](${nodes.sqldb.master.url})  
@@ -83,4 +112,3 @@ success: |
   * [Remote Access to PostgreSQL](https://docs.jelastic.com/remote-access-postgres/)
   * [Import and Export Dump to PostgreSQL](https://docs.jelastic.com/dump-postgres/)
 
-  
