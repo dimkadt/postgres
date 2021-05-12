@@ -13,8 +13,8 @@ onInstall: init
 onAfterScaleOut[sqldb]:
   - getPswd
   - forEach(event.response.nodes):
-      initSlave: 
-        id: ${@i.id}      
+      initSecondary: 
+        id: ${@i.id}
         ip: ${@i.address}
   - fixhbaconf
 
@@ -55,16 +55,16 @@ actions:
       - fixhbaconf
     - else: 
       - setNodeDisplayName[${nodes.sqldb.master.id}]: Primary
-      - initMaster
+      - initPrimary
       - forEach(nodes.sqldb):
           if (${@i.id} != ${nodes.sqldb.master.id}): 
-            initSlave: 
+            initSecondary: 
               id: ${@i.id}
               ip: ${@i.address}
       - fixhbaconf
 
-  initMaster
-    - cmd[${nodes.sqldb.master.id}]: jcm initMaster &>> /var/log/run.log
+  initPrimary:
+    - cmd[${nodes.sqldb.master.id}]: jcm initPrimary &>> /var/log/run.log
     - getPswd
 
   getPswd:
@@ -72,14 +72,14 @@ actions:
     - setGlobals: 
         pswd: ${response.out}    
     
-  initSlave:
+  initSecondary:
     - setNodeDisplayName[${this.id}]: Secondary
     - cmd[${nodes.sqldb.master.id}]: |-
         jcm addReplicaHost ${this.ip} &>> /var/log/run.log
         sudo jem service reload
     - cmd[${this.id}]: |-
         jcm setPswd ${globals.pswd}
-        jcm initSlave ${nodes.sqldb.master.address} &>> /var/log/run.log
+        jcm initSecondary ${nodes.sqldb.master.address} &>> /var/log/run.log
 
   fixhbaconf:
     - script: |
