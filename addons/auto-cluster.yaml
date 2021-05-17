@@ -16,14 +16,14 @@ onAfterScaleOut[sqldb]:
       initSecondary: 
         id: ${@i.id}
         ip: ${@i.address}
-  - fixhbaconf
+  - updateHbaConf
 
 onBeforeScaleIn[sqldb]:
   - forEach(event.response.nodes):
       cmd[${nodes.sqldb.master.id}]: jcm removeReplicaHost ${@i.address}
 
 onAfterScaleIn[sqldb]:
-  - fixhbaconf
+  - updateHbaConf
 
 onAfterClone:
   - script: delete MANIFEST.id; return {result:0, jps:MANIFEST};
@@ -52,7 +52,7 @@ actions:
                 #jcm updateReplicaHost ${nodes.sqldb.master.address} &>> /var/log/run.log
                 jcm updatePrimaryConnInfo &>> /var/log/run.log
                 sudo jem service restart
-      - fixhbaconf
+      - updateHbaConf
     - else: 
       - setNodeDisplayName[${nodes.sqldb.master.id}]: Primary
       - initPrimary
@@ -61,7 +61,7 @@ actions:
             initSecondary: 
               id: ${@i.id}
               ip: ${@i.address}
-      - fixhbaconf
+      - updateHbaConf
 
   initPrimary:
     - cmd[${nodes.sqldb.master.id}]: jcm initPrimary &>> /var/log/run.log
@@ -81,18 +81,17 @@ actions:
         jcm setPswd ${globals.pswd}
         jcm initSecondary ${nodes.sqldb.master.address} &>> /var/log/run.log
 
-  fixhbaconf:
+  updateHbaConf:
     - script: |
           var resp = jelastic.env.control.GetEnvInfo('${env.envName}', session);
-          var nodes_address = "";
           if (resp.result != 0) return resp;
+          var nodes_address = [];
           for (var l = 0, k = resp.nodes; l < k.length; l++) {
             if (k[l].nodeGroup == 'sqldb') {
-              nodes_address += k[l].address + ",";
+              nodes_address.push(k[l].address);
             }
           }
-          nodes_address = nodes_address.slice(0, -1);
-          return { result: 0, nodes_address: nodes_address }
+          return { result: 0, nodes_address: nodes_address.join(",") }
     - setGlobals:
         nodes_address: ${response.nodes_address}
     - forEach(nodes.sqldb):
