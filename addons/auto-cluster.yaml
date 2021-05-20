@@ -21,7 +21,7 @@ onAfterScaleOut[sqldb]:
      if (${@i.id} != ${nodes.sqldb.master.id}): 
        cmd[${@i.id}]: jcm updateHbaConf ${globals.nodes_address} ${@i.address}
 
-onBeforeScaleIn[sqldb]:
+onAfterScaleIn[sqldb]:
   - getNodes
   - forEach(nodes.sqldb):
      cmd[${@i.id}]: jcm updateHbaConf ${globals.nodes_address} ${@i.address}
