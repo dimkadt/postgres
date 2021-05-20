@@ -17,6 +17,9 @@ onAfterScaleOut[sqldb]:
       initSecondary: 
         id: ${@i.id}
         ip: ${@i.address}
+  - forEach(nodes.sqldb):
+     if (${@i.id} != ${nodes.sqldb.master.id}): 
+       cmd[${@i.id}]: jcm updateHbaConf ${globals.nodes_address} ${i.ip}
 
 onBeforeScaleIn[sqldb]:
   - forEach(event.response.nodes):
@@ -40,6 +43,7 @@ actions:
     #    vars: {"KEY_PASS":"${fn.password}"}
     - if (${settings.clone:false} || ${this.update:false}):
       - cmd[${nodes.sqldb.master.id}]: jcm removeAllReplicaHosts
+      - getNodes
       - forEach(nodes.sqldb):
           - if (${@i.id} != ${nodes.sqldb.master.id}): 
             - cmd[${nodes.sqldb.master.id}]: |-
@@ -67,7 +71,7 @@ actions:
         sudo jem service reload
     - cmd[${this.id}]: |-
           jcm setPswd ${globals.pswd}
-          jcm initSecondary ${nodes.sqldb.master.address} &>> /var/log/run.log
+          jcm initSecondary &>> /var/log/run.log
           jcm updateHbaConf ${globals.nodes_address} ${this.ip}
           sudo jem service reload
 
