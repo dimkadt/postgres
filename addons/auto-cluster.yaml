@@ -53,7 +53,7 @@ actions:
             - cmd[${@i.id}]: |-
                 #jcm updateReplicaHost ${nodes.sqldb.master.address} &>> /var/log/run.log
                 jcm updatePrimaryConnInfo &>> /var/log/run.log
-                jcm updateHbaConf ${globals.nodes_address} ${id.address}
+                jcm updateHbaConf ${globals.nodes_address} ${i.address}
                 sudo jem service restart
     - else: 
       - setNodeDisplayName[${nodes.sqldb.master.id}]: Primary
