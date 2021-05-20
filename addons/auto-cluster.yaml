@@ -20,10 +20,7 @@ onAfterScaleOut[sqldb]:
 
 onBeforeScaleIn[sqldb]:
   - forEach(event.response.nodes):
-      cmd[${nodes.sqldb.master.id}]: jcm removeReplicaHost ${@i.address}
-
-onAfterScaleIn[sqldb]:
-  - updateHbaConf
+      cmd[${nodes.sqldb.id}]: jcm removeReplicaHost ${@i.address}
 
 onAfterClone:
   - script: delete MANIFEST.id; return {result:0, jps:MANIFEST};
@@ -51,8 +48,8 @@ actions:
             - cmd[${@i.id}]: |-
                 #jcm updateReplicaHost ${nodes.sqldb.master.address} &>> /var/log/run.log
                 jcm updatePrimaryConnInfo &>> /var/log/run.log
+                jcm updateHbaConf ${globals.nodes_address} ${this.ip}
                 sudo jem service restart
-      - updateHbaConf
     - else: 
       - setNodeDisplayName[${nodes.sqldb.master.id}]: Primary
       - initPrimary
