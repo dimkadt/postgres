@@ -12,11 +12,11 @@ onInstall: init
 
 onAfterScaleOut[sqldb]:
   - getPswd
+  - getNodes
   - forEach(event.response.nodes):
       initSecondary: 
         id: ${@i.id}
         ip: ${@i.address}
-  - updateHbaConf
 
 onBeforeScaleIn[sqldb]:
   - forEach(event.response.nodes):
@@ -56,33 +56,26 @@ actions:
     - else: 
       - setNodeDisplayName[${nodes.sqldb.master.id}]: Primary
       - initPrimary
+      - getNodes
       - forEach(nodes.sqldb):
-          if (${@i.id} != ${nodes.sqldb.master.id}): 
-            initSecondary: 
+        - if (${@i.id} != ${nodes.sqldb.master.id}): 
+          - initSecondary: 
               id: ${@i.id}
               ip: ${@i.address}
-      - updateHbaConf
 
-  initPrimary:
-    - cmd[${nodes.sqldb.master.id}]: jcm initPrimary &>> /var/log/run.log
-    - getPswd
-
-  getPswd:
-    - cmd[${nodes.sqldb.master.id}]: jcm getPswd
-    - setGlobals: 
-        pswd: ${response.out}    
-    
   initSecondary:
     - setNodeDisplayName[${this.id}]: Secondary
     - cmd[${nodes.sqldb.master.id}]: |-
         jcm addReplicaHost ${this.ip} &>> /var/log/run.log
         sudo jem service reload
     - cmd[${this.id}]: |-
-        jcm setPswd ${globals.pswd}
-        jcm initSecondary ${nodes.sqldb.master.address} &>> /var/log/run.log
+          jcm setPswd ${globals.pswd}
+          jcm initSecondary ${nodes.sqldb.master.address} &>> /var/log/run.log
+          jcm updateHbaConf ${globals.nodes_address} ${this.ip}
+          sudo jem service reload
 
-  updateHbaConf:
-    - script: |
+  getNodes:
+      - script: |
           var resp = jelastic.env.control.GetEnvInfo('${env.envName}', session);
           if (resp.result != 0) return resp;
           var nodes_address = [];
@@ -92,15 +85,18 @@ actions:
             }
           }
           return { result: 0, nodes_address: nodes_address.join(",") }
-    - setGlobals:
-        nodes_address: ${response.nodes_address}
-    - forEach(nodes.sqldb):
-        if (${@i.id} != ${nodes.sqldb.master.id}):
-          cmd[${@i.id}]: |-
-            jcm updateHbaConf ${globals.nodes_address} ${@i.address}
-            sudo jem service reload
+      - setGlobals:
+          nodes_address: ${response.nodes_address}
 
+  initPrimary:
+    - cmd[${nodes.sqldb.master.id}]: jcm initPrimary &>> /var/log/run.log
+    - getPswd
 
+  getPswd:
+    - cmd[${nodes.sqldb.master.id}]: jcm getPswd
+    - setGlobals: 
+        pswd: ${response.out}  
+        
 startPage: ${nodes.sqldb.master.url}
 success: |
   **Admin Panel**: [${nodes.sqldb.master.url}](${nodes.sqldb.master.url})  
