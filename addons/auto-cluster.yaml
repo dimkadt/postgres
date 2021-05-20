@@ -19,7 +19,7 @@ onAfterScaleOut[sqldb]:
         ip: ${@i.address}
   - forEach(nodes.sqldb):
      if (${@i.id} != ${nodes.sqldb.master.id}): 
-       cmd[${@i.id}]: jcm updateHbaConf ${globals.nodes_address} ${@i.ip}
+       cmd[${@i.id}]: jcm updateHbaConf ${globals.nodes_address} ${@i.address}
 
 onBeforeScaleIn[sqldb]:
   - forEach(event.response.nodes):
