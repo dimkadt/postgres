@@ -22,8 +22,9 @@ onAfterScaleOut[sqldb]:
        cmd[${@i.id}]: jcm updateHbaConf ${globals.nodes_address} ${@i.address}
 
 onBeforeScaleIn[sqldb]:
-  - forEach(event.response.nodes):
-      cmd[${nodes.sqldb.id}]: jcm removeReplicaHost ${@i.address}
+  - getNodes
+  - forEach(nodes.sqldb):
+     cmd[${@i.id}]: jcm updateHbaConf ${globals.nodes_address} ${@i.address}
 
 onAfterClone:
   - script: delete MANIFEST.id; return {result:0, jps:MANIFEST};
