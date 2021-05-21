@@ -64,6 +64,9 @@ actions:
           - initSecondary: 
               id: ${@i.id}
               ip: ${@i.address}
+          - cmd[${@i.id}]: |-
+             jcm updateHbaConf ${globals.nodes_address} ${@i.address}
+             sudo jem service reload
 
   initSecondary:
     - setNodeDisplayName[${this.id}]: Secondary
@@ -71,10 +74,8 @@ actions:
         jcm addReplicaHost ${this.ip} &>> /var/log/run.log
         sudo jem service reload
     - cmd[${this.id}]: |-
-          jcm setPswd ${globals.pswd}
-          jcm initSecondary &>> /var/log/run.log
-          jcm updateHbaConf ${globals.nodes_address} ${this.ip}
-          sudo jem service reload
+        jcm setPswd ${globals.pswd}
+        jcm initSecondary &>> /var/log/run.log
 
   getNodes:
       - script: |
