@@ -32,7 +32,13 @@ onAfterClone:
     envName: ${event.response.env.envName}    
     settings: 
       nodeGroup: ${settings.nodeGroup}      
-      clone: true    
+      clone: true
+
+onBeforeMigrate:
+  if (${env.status} != 1): 
+    stopEvent:
+      type: warning
+      message: Migration of stopped PostgreSQL Primary-Secondary Auto-Cluster is not supported.
 
 onAfterMigrate:
   init: 
