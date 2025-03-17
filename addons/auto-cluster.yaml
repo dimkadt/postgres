@@ -4,7 +4,11 @@ baseUrl: https://raw.githubusercontent.com/sych74/postgres/JE-73918
 logo: /images/postgres-70x70.png
 name: PostgreSQL Primary-Secondary Auto-Cluster
 
-targetNodes: none
+permanent: true
+
+targetNodes:
+  nodeGroup: ${settings.nodeGroup:sqldb}
+  
 nodeGroupAlias:
   ${settings.nodeGroup}: sqldb
   
